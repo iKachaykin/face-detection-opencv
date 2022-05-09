@@ -1,3 +1,6 @@
+import os
+import glob
+
 import numpy as np
 
 
@@ -23,3 +26,12 @@ def __get_zeros_shape(output_shape):
     else:
         zeros_shape = (0,)
     return zeros_shape
+
+
+def extract_paths_by_extensions(directory, extensions):
+    extracted_paths = []
+    for single_ext in extensions:
+        single_glob_arg = os.path.join(directory, '**', f'*.{single_ext}')
+        single_extracted_paths = glob.glob(single_glob_arg, recursive=True)
+        extracted_paths.extend(single_extracted_paths)
+    return extracted_paths

@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 
-from abstract_detector import AbstractDetector
+from .abstract_detector import AbstractDetector
 
 
 class FaceDetector(AbstractDetector):
