@@ -32,7 +32,7 @@ def main(source, dest, shape):
     for single_image in tqdm(images):
         _, boxes, _ = detector.detect(np.expand_dims(single_image, 0))
         for single_box in boxes:
-            xmin, ymin, xmax, ymax = single_box
+            xmin, ymin, xmax, ymax = __extract_limits(single_box)
             single_face = single_image[ymin:ymax, xmin:xmax]
             single_face = cv2.resize(single_face, shape)
             single_path = os.path.join(dest, f'{hash(np.random.rand())}.jpg')
@@ -55,6 +55,17 @@ def __create_face_detector():
         extract_best=False
     )
     return detector
+
+
+def __extract_limits(single_box):
+    xmin, ymin, xmax, ymax = single_box
+    width = xmax - xmin
+    height = ymax - ymin
+    xmin = np.maximum(int(xmin - 0.5*width), 0)
+    ymin = np.maximum(int(ymin - 0.15*height), 0)
+    xmax = int(xmax + 0.5*width)
+    ymax = int(ymax + 0.15*height)
+    return xmin, ymin, xmax, ymax
 
 
 if __name__ == '__main__':
