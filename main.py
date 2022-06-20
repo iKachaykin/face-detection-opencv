@@ -63,49 +63,40 @@ def __get_image_shape(image):
     return w, h
 
 
-def __extract_limits(single_box, original_shape, default_scale=0.15):
-    xmin, ymin, xmax, ymax = __preprocess_box(single_box, original_shape)
+def __extract_limits(
+        single_box, original_shape, ymin_scale=0.2, ymax_scale=0.05
+):
+    xmin, ymin, xmax, ymax = __project_box(single_box, original_shape)
+    height = int(ymax - ymin)
+    ymin = np.maximum(ymin - ymin_scale*height, 0)
+    ymax = int(ymax + ymax_scale*height)
+    xmin, ymin, xmax, ymax = __project_box(
+        (xmin, ymin, xmax, ymax), original_shape
+    )
     width = int(xmax - xmin)
     height = int(ymax - ymin)
     if height > width:
         diff = height - width
         xmin = xmin - int(diff / 2)
         xmax = xmax + int(diff / 2)
-        max_dim = height
     else:
         diff = width - height
         ymin = ymin - int(diff / 2)
         ymax = ymax + int(diff / 2)
-        max_dim = width
-    scale = __get_scale(
-        (xmin, ymin, xmax, ymax), max_dim, original_shape, default_scale
+    xmin, ymin, xmax, ymax = __project_box(
+        (xmin, ymin, xmax, ymax), original_shape
     )
-    xmin = np.maximum(int(xmin - scale*max_dim), 0)
-    ymin = np.maximum(int(ymin - scale*max_dim), 0)
-    xmax = int(xmax + scale*max_dim)
-    ymax = int(ymax + scale*max_dim)
     return xmin, ymin, xmax, ymax
 
 
-def __preprocess_box(box, original_shape):
+def __project_box(box, original_shape):
     xmin, ymin, xmax, ymax = box
     w, h = original_shape
-    xmin = np.maximum(xmin, 0)
-    ymin = np.maximum(ymin, 0)
-    xmax = np.minimum(xmax, w)
-    ymax = np.minimum(ymax, h)
+    xmin = int(np.maximum(xmin, 0))
+    ymin = int(np.maximum(ymin, 0))
+    xmax = int(np.minimum(xmax, w))
+    ymax = int(np.minimum(ymax, h))
     return xmin, ymin, xmax, ymax
-
-
-def __get_scale(box, max_dim, shape, default_scale):
-    xmin, ymin, xmax, ymax = box
-    width, height = shape
-    scale = np.min([
-        xmin / max_dim, ymin / max_dim,
-        (width - xmax) / max_dim, (height - ymax) / max_dim,
-        default_scale
-    ])
-    return scale
 
 
 if __name__ == '__main__':
