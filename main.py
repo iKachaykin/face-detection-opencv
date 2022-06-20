@@ -31,8 +31,9 @@ def main(source, dest, shape):
     images = [cv2.imread(single_path) for single_path in images_paths]
     for single_image in tqdm(images):
         _, boxes, _ = detector.detect(np.expand_dims(single_image, 0))
+        orig_shape = __get_image_shape(single_image)
         for single_box in boxes:
-            xmin, ymin, xmax, ymax = __extract_limits(single_box)
+            xmin, ymin, xmax, ymax = __extract_limits(single_box, orig_shape)
             single_face = single_image[ymin:ymax, xmin:xmax]
             single_face = cv2.resize(single_face, shape)
             single_path = os.path.join(dest, f'{hash(np.random.rand())}.jpg')
@@ -57,15 +58,54 @@ def __create_face_detector():
     return detector
 
 
-def __extract_limits(single_box):
-    xmin, ymin, xmax, ymax = single_box
-    width = xmax - xmin
-    height = ymax - ymin
-    xmin = np.maximum(int(xmin - 0.5*width), 0)
-    ymin = np.maximum(int(ymin - 0.15*height), 0)
-    xmax = int(xmax + 0.5*width)
-    ymax = int(ymax + 0.15*height)
+def __get_image_shape(image):
+    h, w = image.shape[:2]
+    return w, h
+
+
+def __extract_limits(single_box, original_shape, default_scale=0.15):
+    xmin, ymin, xmax, ymax = __preprocess_box(single_box, original_shape)
+    width = int(xmax - xmin)
+    height = int(ymax - ymin)
+    if height > width:
+        diff = height - width
+        xmin = xmin - int(diff / 2)
+        xmax = xmax + int(diff / 2)
+        max_dim = height
+    else:
+        diff = width - height
+        ymin = ymin - int(diff / 2)
+        ymax = ymax + int(diff / 2)
+        max_dim = width
+    scale = __get_scale(
+        (xmin, ymin, xmax, ymax), max_dim, original_shape, default_scale
+    )
+    xmin = np.maximum(int(xmin - scale*max_dim), 0)
+    ymin = np.maximum(int(ymin - scale*max_dim), 0)
+    xmax = int(xmax + scale*max_dim)
+    ymax = int(ymax + scale*max_dim)
     return xmin, ymin, xmax, ymax
+
+
+def __preprocess_box(box, original_shape):
+    xmin, ymin, xmax, ymax = box
+    w, h = original_shape
+    xmin = np.maximum(xmin, 0)
+    ymin = np.maximum(ymin, 0)
+    xmax = np.minimum(xmax, w)
+    ymax = np.minimum(ymax, h)
+    return xmin, ymin, xmax, ymax
+
+
+def __get_scale(box, max_dim, shape, default_scale):
+    xmin, ymin, xmax, ymax = box
+    width, height = shape
+    scale = np.min([
+        xmin / max_dim, ymin / max_dim,
+        (width - xmax) / max_dim, (height - ymax) / max_dim,
+        default_scale
+    ])
+    return scale
 
 
 if __name__ == '__main__':
